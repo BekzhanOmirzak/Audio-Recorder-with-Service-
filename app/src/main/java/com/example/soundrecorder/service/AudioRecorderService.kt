@@ -6,11 +6,14 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.media.MediaRecorder
 import android.os.Build
+import android.os.Build.VERSION.SDK_INT
 import android.os.Environment
 import android.os.IBinder
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import com.example.soundrecorder.R
 import com.example.soundrecorder.ui.MainActivity
@@ -54,7 +57,7 @@ class AudioRecorderService : Service() {
         val notificationManager =
             getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager;
 
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
+        if (SDK_INT > Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Аудио запись channel",
@@ -70,7 +73,17 @@ class AudioRecorderService : Service() {
             .setDefaults(Notification.DEFAULT_SOUND)
             .build();
 
-        startForeground(NOTIFICATION_ID, notification);
+        if (SDK_INT >= Build.VERSION_CODES.R)
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            );
+        else
+            startForeground(
+                NOTIFICATION_ID,
+                notification
+            );
 
     }
 
@@ -82,14 +95,12 @@ class AudioRecorderService : Service() {
             setOutputFormat(MediaRecorder.OutputFormat.AMR_NB);
             setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
             setOutputFile(getOutPutMediaFile());
-            setMaxDuration(60*1000*5)
-            setOnInfoListener(object : MediaRecorder.OnInfoListener {
-                override fun onInfo(mr: MediaRecorder?, what: Int, extra: Int) {
-                    if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED) {
-                        Log.e(TAG, "onInfo: Max duration time has been reached...");
-                    }
+            setMaxDuration(60 * 1000 * 5)
+            setOnInfoListener { mr, what, extra ->
+                if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED) {
+                    Log.e(TAG, "onInfo: Max duration time has been reached...");
                 }
-            })
+            }
         }
 
     }

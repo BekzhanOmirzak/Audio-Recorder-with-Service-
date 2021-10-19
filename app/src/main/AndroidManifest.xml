@@ -23,7 +23,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service android:name=".service.AudioRecorderService" />
+        <service android:name=".service.AudioRecorderService"
+            android:foregroundServiceType="microphone"
+            />
     </application>
 
 </manifest>
