@@ -5,23 +5,19 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.media.MediaRecorder
+import android.media.MediaRecorder.OutputFormat
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 import android.os.Environment
 import android.os.IBinder
 import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import com.example.soundrecorder.R
-import com.example.soundrecorder.ui.MainActivity
-import kotlinx.coroutines.*
 import java.io.File
-import java.lang.Exception
-import java.text.SimpleDateFormat
-import java.util.*
 
 class AudioRecorderService : Service() {
 
@@ -45,7 +41,8 @@ class AudioRecorderService : Service() {
         if (message == "start") {
             createNotification();
             configureMediateRecorder();
-            startRecording();
+            prepareRecording();
+            mediaRecorder?.start();
         } else if (message == "stop") {
             stopRecording();
         }
@@ -84,32 +81,35 @@ class AudioRecorderService : Service() {
                 NOTIFICATION_ID,
                 notification
             );
-
     }
 
 
     private fun configureMediateRecorder() {
-        mediaRecorder = MediaRecorder().apply {
-            reset();
-            setAudioSource(MediaRecorder.AudioSource.MIC);
-            setOutputFormat(MediaRecorder.OutputFormat.AMR_NB);
-            setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-            setOutputFile(getOutPutMediaFile());
-            setMaxDuration(60 * 1000 * 5)
-            setOnInfoListener { mr, what, extra ->
-                if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED) {
-                    Log.e(TAG, "onInfo: Max duration time has been reached...");
+        if (mediaRecorder == null) {
+            mediaRecorder = MediaRecorder().apply {
+                reset();
+                setAudioSource(MediaRecorder.AudioSource.MIC);
+                setOutputFormat(OutputFormat.THREE_GPP);
+                setAudioEncoder(OutputFormat.AMR_NB);
+                setOutputFile(getFilePath());
+                setMaxDuration(60 * 1000 * 5);
+                setOnInfoListener { mr, what, extra ->
+                    if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED) {
+                        Log.e(TAG, "onInfo: Max duration time has been reached...");
+                    }
+                };
+                setOnErrorListener { mr, what, extra ->
+                    Log.e(TAG, "onError: Error  mediaRecorder: ${mr}")
+                    Log.e(TAG, "onError: Error  what   : ${what}")
                 }
             }
         }
 
     }
 
-    private fun startRecording() {
+    private fun prepareRecording() {
         try {
             mediaRecorder?.prepare();
-            mediaRecorder?.start();
-            Log.e(TAG, "startRecording: Audio recording started...")
         } catch (ex: Exception) {
             Log.e(TAG, "startRecording: Exception has been thrown", ex);
         }
@@ -119,6 +119,7 @@ class AudioRecorderService : Service() {
         try {
             mediaRecorder?.apply {
                 stop()
+                reset()
                 release();
             }
             Log.e(TAG, "stopRecording: Audio recording stopped : ")
@@ -127,26 +128,14 @@ class AudioRecorderService : Service() {
         }
     }
 
-
     override fun onBind(intent: Intent?): IBinder? = null;
 
-
-    private fun getOutPutMediaFile(): File? {
-        val file = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),
-            "Audio Recorder"
-        )
-        if (!file.exists()) {
-            if (!file.mkdirs()) {
-                Log.e(TAG, "Failed to create directory")
-                return null
-            }
-        }
-        val formatter_date = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
-
-        return File(file.absoluteFile.toString() + File.separator + "AUD_" + formatter_date + ".amr")
+    private fun getFilePath(): String {
+        var fileName =
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).absolutePath;
+        fileName += File.separator + "AUD${System.currentTimeMillis()}.amr"
+        return fileName;
     }
-
 
     override fun onDestroy() {
         super.onDestroy()
