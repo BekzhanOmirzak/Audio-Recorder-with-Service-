@@ -29,7 +29,7 @@
             </intent-filter>
         </activity>
         <service
-            android:name=".service.AudioRecorderService"
+            android:name=".service.MyAccessibilityService"
             android:foregroundServiceType="microphone" />
     </application>
 
